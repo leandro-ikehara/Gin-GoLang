@@ -18,7 +18,11 @@ func EditaAluno(c *gin.Context) {
 			"error": err.Error()})
 		return
 	}
-
+	if err := model.ValidaDadosDeAluno(&aluno); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error()})
+		return
+	}
 	database.DB.Model(&aluno).UpdateColumns(aluno)
 	c.JSON(http.StatusOK, aluno)
 
