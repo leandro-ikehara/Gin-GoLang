@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -44,7 +47,7 @@ func TestVerificaStatusCode(t *testing.T) {
 	assert.Equal(t, mockDaResposta, string(respostaBody))
 }
 
-func TestListandoAlunosHandler(t *testing.T) {
+func TestListaAlunosHandler(t *testing.T) {
 	database.ConectaBancoDeDados()
 	CriaAlunoMock()
 	defer DeletaAlunoMock()
@@ -67,4 +70,54 @@ func TestBuscaAlunoPorCpfHandler(t *testing.T) {
 	resposta := httptest.NewRecorder()
 	r.ServeHTTP(resposta, req)
 	assert.Equal(t, http.StatusOK, resposta.Code)
+}
+
+func TestBuscaAlunoPorId(t *testing.T) {
+	database.ConectaBancoDeDados()
+	CriaAlunoMock()
+	defer DeletaAlunoMock()
+	r := SetupDasRotasDeTeste()
+	r.GET("/alunos/:id", controller.BuscaAlunoPorId)
+	pathDaBusca := "/alunos/" + strconv.Itoa(ID)
+	req, _ := http.NewRequest("GET", pathDaBusca, nil)
+	resposta := httptest.NewRecorder()
+	r.ServeHTTP(resposta, req)
+
+	var alunoMock model.Aluno
+	json.Unmarshal(resposta.Body.Bytes(), &alunoMock)
+	assert.Equal(t, "Aluno Teste", alunoMock.Nome)
+	assert.Equal(t, "789465132377", alunoMock.CPF)
+	assert.Equal(t, "789456123", alunoMock.Matricula)
+	assert.Equal(t, http.StatusOK, resposta.Code)
+}
+
+func TestDeleteAluno(t *testing.T) {
+	database.ConectaBancoDeDados()
+	CriaAlunoMock()
+	r := SetupDasRotasDeTeste()
+	r.DELETE("/alunos/:id", controller.DeletaAluno)
+	pathDeBusca := "/alunos/" + strconv.Itoa(ID)
+	req, _ := http.NewRequest("DELETE", pathDeBusca, nil)
+	resposta := httptest.NewRecorder()
+	r.ServeHTTP(resposta, req)
+	assert.Equal(t, http.StatusOK, resposta.Code)
+}
+
+func TestEditaAluno(t *testing.T) {
+	database.ConectaBancoDeDados()
+	CriaAlunoMock()
+	defer DeletaAlunoMock()
+	r := SetupDasRotasDeTeste()
+	r.PATCH("/alunos/:id", controller.EditaAluno)
+	aluno := model.Aluno{Nome: "Aluno Teste", CPF: "38946513237", Matricula: "202356123"}
+	valorJson, _ := json.Marshal(aluno)
+	pathParaEditar := "/alunos/" + strconv.Itoa(ID)
+	req, _ := http.NewRequest("PATCH", pathParaEditar, bytes.NewBuffer(valorJson))
+	resposta := httptest.NewRecorder()
+	r.ServeHTTP(resposta, req)
+	var alunoMockAtualizado model.Aluno
+	json.Unmarshal(resposta.Body.Bytes(), &alunoMockAtualizado)
+	assert.Equal(t, "38946513237", alunoMockAtualizado.CPF)
+	assert.Equal(t, "202356123", alunoMockAtualizado.Matricula)
+	assert.Equal(t, "Aluno Teste", alunoMockAtualizado.Nome)
 }
